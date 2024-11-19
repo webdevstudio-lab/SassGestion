@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  createAt     DateTime @default(now()) @db.Timestamptz(3)
+  updateAt     DateTime @updatedAt
+  email        String   @unique @db.VarChar(255)
+  fullname     String   @db.VarChar(65)
+  password     String   @db.VarChar(255)
+  role         String   @default("USER")
+  refreshToken String   @default("null") @db.VarChar(255)
+  passUpdateAt DateTime @default(now()) @db.Timestamptz(3) //Pour la securité du compte empêche l'utilisation d'un token apres le changement du mot de passe
+
+  Session Session[] @relation("userSession")
+
+  @@map("user")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  createAt  DateTime @default(now())
+  userAgent String?  @db.VarChar(255)
+  expiresAt DateTime @db.Timestamp()
+
+  userId      Int
+  userSession User @relation("userSession", fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Client {
+  id       Int      @id @default(autoincrement())
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  name     String  @db.VarChar(255)
+  phone    String  @unique @db.VarChar(20)
+  email    String? @default("Néan") @db.VarChar(255)
+  addresse String? @default("Néan") @db.VarChar(255)
+  type     String  @default("Entreprise") @db.VarChar(255)
+
+  devis   Devis[]   @relation("client_devis")
+  facture Facture[] @relation("client_facture")
+
+  @@map("client")
+}
+
+model Devis {
+  id       Int      @id @default(autoincrement())
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  numDevis    String       @db.VarChar(255)
+  total       Float        @default(0)
+  matricule   String       @db.VarChar(255)
+  description String       @db.VarChar(1000)
+  hasFacture  Boolean      @default(false)
+  clientId    Int
+  clientDevis Client       @relation("client_devis", fields: [clientId], references: [id], onUpdate: Cascade, onDelete: NoAction)
+  devisItem   ItemsDevis[] @relation("devisItem")
+
+  @@map("devis")
+}
+
+model Facture {
+  id       Int      @id @default(autoincrement())
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  numFacture  String @db.VarChar(255)
+  total       Float  @default(0)
+  matricule   String @db.VarChar(255)
+  description String @db.VarChar(1000)
+  etat        String @default("En Attente") @db.VarChar(255)
+  numDevis    String @default("NA") @db.VarChar(255)
+
+  clientId      Int
+  clientFacture Client         @relation("client_facture", fields: [clientId], references: [id], onUpdate: Cascade, onDelete: NoAction)
+  factureItem   ItemsFacture[] @relation("factureItem")
+
+  @@map("facture")
+}
+
+model ItemsFacture {
+  itemId   Int      @id @default(autoincrement())
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  description String
+  quantity    Int
+  unitePrice  Int
+  total       Int
+
+  factureId   Int
+  factureItem Facture @relation("factureItem", fields: [factureId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("itemsFactures")
+}
+
+model ItemsDevis {
+  itemId   Int      @id @default(autoincrement())
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  description String
+  quantity    Int
+  unitePrice  Int
+  total       Int
+
+  devisId   Int
+  devisItem Devis @relation("devisItem", fields: [devisId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("itemDevis")
+}
